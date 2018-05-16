@@ -1,14 +1,14 @@
-import os
 import argparse
-import json
 from collections import OrderedDict as odict
 from datetime import datetime, date, timedelta, time
+import json
+import os
 import re
 
 import appdirs
 
-import quantities as q
-import fddb
+from . import quantities as q
+from . import fddb
 
 def promptNutriInfoField(name, target, key, typeClass, factor, optional):
     while True:

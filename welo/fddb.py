@@ -3,7 +3,7 @@ from collections import OrderedDict as odict
 
 import requests
 
-import quantities as q
+from . import quantities as q
 
 # exampmles from 16.05.2018
 """

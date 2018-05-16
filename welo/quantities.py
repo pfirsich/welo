@@ -176,7 +176,7 @@ class Mass(object):
                         self.kilograms += val
                     elif unit == "lb" or unit == "lbs":
                         self.kilograms += val * 0.453592
-                    elif unit == "egg(m)":
+                    elif unit == "egg" or unit == "egg(m)":
                         self.kilograms += val * 0.058
                     elif unit == "egg(l)":
                         self.kilograms += val * 0.063
