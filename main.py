@@ -2,7 +2,7 @@ import os
 import argparse
 import json
 from collections import OrderedDict as odict
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta, time
 import re
 
 import appdirs
@@ -192,7 +192,6 @@ class DataWrapper(object):
             print("{}: {}".format(q.Time(weight["time"]), q.Mass(weight["weight"])))
 
     def getMeals(self, startTime):
-        now = datetime.now()
         endTime = startTime + timedelta(hours=24)
         filtered = (meal for meal in self.data["meals"] if q.Time(meal["time"]).inPeriod(startTime, endTime))
         for meal in sorted(filtered, key=lambda meal: q.Time(meal["time"]).datetime):
@@ -324,7 +323,7 @@ class DataWrapper(object):
         if startTime:
             startTime = startTime.datetime
         else:
-            startTime = datetime.today()
+            startTime = datetime.combine(date.today(), time(0, 0))
 
         totalNutriInfo = NutriInfoAccumulator()
         meals = list(self.getMeals(startTime))
