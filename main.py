@@ -481,19 +481,22 @@ def main():
             else:
                 data.eat(args.name, args.food, args.time, args.dry, args.portion)
 
-        elif args.command == "tag":
-            pass
-
-        elif args.command == "sleep":
-            pass
-
         elif args.command == "weight":
             if args.weight:
                 data.addWeight(args.weight, args.time)
             else:
                 data.printWeight()
 
+        elif args.command == "tag":
+            quit("Not implemented yet!")
+            pass
+
+        elif args.command == "sleep":
+            quit("Not implemented yet!")
+            pass
+
         elif args.command == "workout":
+            quit("Not implemented yet!")
             if args.name:
                 if not args.duration:
                     quit("Please specify a duration")
