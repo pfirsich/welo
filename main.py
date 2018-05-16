@@ -231,28 +231,24 @@ class DataWrapper(object):
 
         return factor
 
+    @staticmethod
+    def multiplyFoodItems(foodItems, factor):
+        ret = []
+        for item in foodItems:
+            _item = odict()
+            _item["name"] = item["name"]
+            _item["amount"] = str(q.fromStr(item["amount"]) * factor)
+            _item["nutriInfo"] = odict()
+            for field in item["nutriInfo"]:
+                _item["nutriInfo"][field] = str(q.fromStr(item["nutriInfo"][field]) * factor)
+            ret.append(_item)
+        return ret
+
     def eat(self, name, food, time, dry, portion):
         portionFactor = 1.0
         if portion:
             totalWeight = sum((q.Mass(w) for w in food[::2]), q.Mass(0))
             portionFactor = self.getPortionFactor(portion, totalWeight)
-
-        leftoversMatch = re.match(r"^leftovers(?:\((.*?)\))?$", food[1])
-        if len(food) == 2 and leftoversMatch:
-            leftoversTime = leftoversMatch.group(1)
-            i, meal = self.getMealByTime(leftoversTime)
-            if i == None:
-                quit("No meal found for that time!")
-
-            foodList = []
-            for item in meal["food"]:
-                foodList.append(item["amount"])
-                foodList.append(item["name"])
-
-            portionFactor *= self.getPortionFactor(food[0], self.totalMealWeight(meal))
-
-            self.eat(name, foodList, time, dry, portionFactor)
-            return
 
         meal = odict()
         meal["time"] = str(time or q.Time())
@@ -262,29 +258,42 @@ class DataWrapper(object):
 
         promptIntro = False
         for i in range(0, len(food), 2):
-            weight = q.Mass(food[i+0])
+            weight = food[i+0]
             name = food[i+1]
-            if name in self.data["nutriInfoCache"]:
-                nutriInfo = self.data["nutriInfoCache"][name]
+
+            leftoversMatch = re.match(r"^leftovers(?:\((.*?)\))?$", name)
+            if leftoversMatch:
+                leftoversTime = leftoversMatch.group(1)
+                i, leftoverMeal = self.getMealByTime(leftoversTime)
+                if i == None:
+                    quit("No meal found for that time!")
+
+                factor = portionFactor
+                factor *= self.getPortionFactor(food[0], self.totalMealWeight(leftoverMeal))
+                meal["food"].extend(self.multiplyFoodItems(leftoverMeal["food"], factor))
             else:
-                if not promptIntro:
-                    print("Some foods have unknown nutritional information. Please enter it below.")
-                    print("You may leave the fields empty if you don't know or care.")
-                    print("You may also paste a link to a fddb.info site.")
-                    promptIntro = True
-                nutriInfo = promptNutriInfo(name)
-                self.data["nutriInfoCache"][name] = nutriInfo
+                if name in self.data["nutriInfoCache"]:
+                    nutriInfo = self.data["nutriInfoCache"][name]
+                else:
+                    if not promptIntro:
+                        print("Some foods have unknown nutritional information. Please enter it below.")
+                        print("You may leave the fields empty if you don't know or care.")
+                        print("You may also paste a link to a fddb.info site in the first prompt.")
+                        promptIntro = True
+                    nutriInfo = promptNutriInfo(name)
+                    self.data["nutriInfoCache"][name] = nutriInfo
 
-            factor = weight.g() / 100
-            totalNutriInfo = odict()
-            for field in nutriInfo:
-                totalNutriInfo[field] = str(q.fromStr(nutriInfo[field]) * factor * portionFactor)
+                weight = q.Mass(weight)
+                factor = weight.g() / 100
+                totalNutriInfo = odict()
+                for field in nutriInfo:
+                    totalNutriInfo[field] = str(q.fromStr(nutriInfo[field]) * factor * portionFactor)
 
-            meal["food"].append(odict([
-                ("name", name),
-                ("amount", str(weight * portionFactor)),
-                ("nutriInfo", totalNutriInfo)
-            ]))
+                meal["food"].append(odict([
+                    ("name", name),
+                    ("amount", str(weight * portionFactor)),
+                    ("nutriInfo", totalNutriInfo)
+                ]))
 
         self.printMeal(meal)
 
@@ -305,10 +314,7 @@ class DataWrapper(object):
         self.printMeal(meal)
 
         factor = self.getPortionFactor(newWeight, self.totalMealWeight(meal))
-        for item in meal["food"]:
-            item["amount"] = str(q.fromStr(item["amount"]) * factor)
-            for field in item["nutriInfo"]:
-                item["nutriInfo"][field] = str(q.fromStr(item["nutriInfo"][field]) * factor)
+        meal["food"] = self.multiplyFoodItems(meal["food"], factor)
         self.printMeal(meal)
 
         if not dry:
