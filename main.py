@@ -3,6 +3,7 @@ import argparse
 import json
 from collections import OrderedDict as odict
 from datetime import datetime, timedelta
+import re
 
 import appdirs
 
@@ -216,7 +217,7 @@ class DataWrapper(object):
         for i, meal in enumerate(self.data["meals"]):
             if meal["time"] == str(time):
                 return i, meal
-        return None
+        return None, None
 
     @staticmethod
     def getPortionFactor(portion, totalWeight):
@@ -233,14 +234,15 @@ class DataWrapper(object):
     def eat(self, name, food, time, dry, portion):
         portionFactor = 1.0
         if portion:
-            if len(food) == 3 and food[1] == "leftovers":
-                totalWeight = q.Mass(food[0])
-            else:
-                totalWeight = sum((q.Mass(w) for w in food[::2]), q.Mass(0))
+            totalWeight = sum((q.Mass(w) for w in food[::2]), q.Mass(0))
             portionFactor = self.getPortionFactor(portion, totalWeight)
 
-        if (len(food) == 2 or len(food) == 3) and food[1] == "leftovers":
-            i, meal = self.getMealByTime(food[2] if len(food) == 3 else None)
+        leftoversMatch = re.match(r"^leftovers(?:\((.*?)\))?$", food[1])
+        if len(food) == 2 and leftoversMatch:
+            leftoversTime = leftoversMatch.group(1)
+            i, meal = self.getMealByTime(leftoversTime)
+            if i == None:
+                quit("No meal found for that time!")
 
             foodList = []
             for item in meal["food"]:
