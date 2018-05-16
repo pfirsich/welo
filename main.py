@@ -419,7 +419,7 @@ def main():
 
     if args.command == "config" and args.datafile:
         print("Set current data file to '{}'".format(args.datafile))
-        config["dataFile"] = args.datafile
+        config["dataFile"] = os.path.abspath(args.datafile)
         os.makedirs(os.path.dirname(configPath), exist_ok=True)
         with open(configPath, "w") as f:
             json.dump(config, f, indent=4)
