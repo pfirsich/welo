@@ -462,10 +462,10 @@ def main():
             print("goal weight: {}".format(data.getConfig("goalWeight")))
             print()
             bmr = data.getBmr()
-            print("Basal metabolic rate: {} kcal/day".format(bmr))
+            print("Basal metabolic rate: {} kcal/day".format(round(bmr, 2)))
             activity = data.getActivity()
             if bmr and activity:
-                print("Metabolic rate: {} kcal/day".format(bmr * activity))
+                print("Metabolic rate: {} kcal/day".format(round(bmr * activity, 2)))
 
         elif args.command == "eat":
             if args.undo:
