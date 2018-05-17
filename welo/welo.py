@@ -143,7 +143,15 @@ class DataWrapper(object):
                 bmr += 5
             else:
                 bmr -= 161
-            return bmr
+            return round(bmr, 2)
+        else:
+            return None
+
+    def getTotalEnergyExpenditure(self):
+        activity = self.getActivity()
+        bmr = self.getBmr()
+        if activity and bmr:
+            return round(activity * bmr, 2)
         else:
             return None
 
@@ -461,11 +469,8 @@ def main():
             print("weight: {}, bmi: {}".format(data.getConfig("weight"), bmiStr(data.getBmi())))
             print("goal weight: {}".format(data.getConfig("goalWeight")))
             print()
-            bmr = data.getBmr()
-            print("Basal metabolic rate: {} kcal/day".format(round(bmr, 2)))
-            activity = data.getActivity()
-            if bmr and activity:
-                print("Metabolic rate: {} kcal/day".format(round(bmr * activity, 2)))
+            print("Basal metabolic rate: {} kcal/day".format(data.getBmr()))
+            print("Total energy expenditure: {} kcal/day".format(data.getTotalEnergyExpenditure()))
 
         elif args.command == "eat":
             if args.undo:
