@@ -301,6 +301,8 @@ class Activity(object):
         return s
 
 def fromStr(s):
+    assert isinstance(s, str)
+
     try:
         return Mass(s)
     except ValueError:
