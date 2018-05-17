@@ -171,13 +171,14 @@ class DataWrapper(object):
 
         self.setConfig("weight", weight)
 
-        lowestWeight = weight
-        for other in self.data["weight"]:
-            v = q.fromStr(other["weight"])
-            if v < weight:
-                lowestWeight = v
-        if lowestWeight == weight:
-            print("This is your new lowest weight!")
+        if len(self.data["weight"]) > 1:
+            lowestWeight = weight
+            for other in self.data["weight"]:
+                v = q.fromStr(other["weight"])
+                if v < weight:
+                    lowestWeight = v
+            if lowestWeight == weight:
+                print("This is your new lowest weight!")
 
         height = self.getConfig("height")
         if height:
