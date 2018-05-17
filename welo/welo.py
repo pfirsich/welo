@@ -364,6 +364,9 @@ class DataWrapper(object):
             print("Your last meal was {} ago.".format(timedeltaStr(timeDelta)))
 
 def bmiStr(bmi):
+    if bmi == None:
+        return None
+
     s = str(round(bmi, 2))
     if bmi < 15:
         s += " (very severely underweight)"
@@ -451,67 +454,71 @@ def main():
                 ("nutriInfoCache", odict()),
             ]), args.datafile)
             data.save()
-    else:
-        if not os.path.isfile(config["dataFile"]):
-            quit("Data file could not be found.")
 
-        with open(config["dataFile"]) as f:
-            data = DataWrapper(json.load(f, object_pairs_hook=odict), config["dataFile"])
+    if not os.path.isfile(config["dataFile"]):
+        quit("Data file could not be found.")
 
-        if args.command == "config":
-            if args.height:
-                data.setConfig("height", args.height)
-            if args.activity:
-                data.setConfig("activity", args.activity)
-            if args.birthday:
-                data.setConfig("birthday", args.birthday)
-            if args.sex:
-                data.setConfig("sex", args.sex)
-            if args.goalweight:
-                data.setConfig("goalWeight", args.goalweight)
+    with open(config["dataFile"]) as f:
+        data = DataWrapper(json.load(f, object_pairs_hook=odict), config["dataFile"])
 
-            if args.height or args.activity or args.birthday or args.sex or args.goalweight:
-                data.save()
+    if args.command == "config":
+        if args.height:
+            data.setConfig("height", args.height)
+        if args.activity:
+            data.setConfig("activity", args.activity)
+        if args.birthday:
+            data.setConfig("birthday", args.birthday)
+        if args.sex:
+            data.setConfig("sex", args.sex)
+        if args.goalweight:
+            data.setConfig("goalWeight", args.goalweight)
 
-            print("{}, {}, {}".format(data.getConfig("sex"), data.getConfig("height"), data.getConfig("birthday").getAge()))
-            print("activity: {}".format(data.getConfig("activity")))
-            print("weight: {}, bmi: {}".format(data.getConfig("weight"), bmiStr(data.getBmi())))
-            print("goal weight: {}".format(data.getConfig("goalWeight")))
-            print()
-            print("Basal metabolic rate: {} kcal/day".format(data.getBmr()))
-            print("Total energy expenditure: {} kcal/day".format(data.getTotalEnergyExpenditure()))
+        if args.height or args.activity or args.birthday or args.sex or args.goalweight:
+            data.save()
 
-        elif args.command == "eat":
-            if args.undo:
-                data.eatUndo(args.time)
-                return
+        print("Data file: '{}'".format(config["dataFile"]))
+        print("sex: {}".format(data.getConfig("sex")))
+        print("height: {}".format(data.getConfig("height")))
+        birthday = data.getConfig("birthday")
+        print("age: {} years old".format(birthday.getAge() if birthday else None))
+        print("activity: {}".format(data.getConfig("activity")))
+        print("weight: {}, bmi: {}".format(data.getConfig("weight"), bmiStr(data.getBmi())))
+        print("goal weight: {}".format(data.getConfig("goalWeight")))
+        print()
+        print("Basal metabolic rate: {} kcal/day".format(data.getBmr()))
+        print("Total energy expenditure: {} kcal/day".format(data.getTotalEnergyExpenditure()))
 
-            if args.resize:
-                data.resizeMeal(args.resize, args.dry, args.time)
-                return
+    elif args.command == "eat":
+        if args.undo:
+            data.eatUndo(args.time)
+            return
 
-            if len(args.food) == 0:
-                data.eatInfo(args.time)
-            else:
-                data.eat(args.name, args.food, args.time, args.dry, args.portion)
+        if args.resize:
+            data.resizeMeal(args.resize, args.dry, args.time)
+            return
 
-        elif args.command == "weight":
-            if args.weight:
-                data.addWeight(args.weight, args.time)
-            else:
-                data.printWeight()
+        if len(args.food) == 0:
+            data.eatInfo(args.time)
+        else:
+            data.eat(args.name, args.food, args.time, args.dry, args.portion)
 
-        elif args.command == "tag":
-            quit("Not implemented yet!")
+    elif args.command == "weight":
+        if args.weight:
+            data.addWeight(args.weight, args.time)
+        else:
+            data.printWeight()
+
+    elif args.command == "tag":
+        quit("Not implemented yet!")
+        pass
+
+    elif args.command == "workout":
+        quit("Not implemented yet!")
+        if args.name:
+            if not args.duration:
+                quit("Please specify a duration")
+        else:
             pass
-
-        elif args.command == "workout":
-            quit("Not implemented yet!")
-            if args.name:
-                if not args.duration:
-                    quit("Please specify a duration")
-            else:
-                pass
 
 if __name__ == "__main__":
     main()
