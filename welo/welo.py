@@ -58,7 +58,7 @@ def promptNutriInfo(name):
     print("--- You entered:")
     for key in data:
         print("{}: {}".format(key, data[key]))
-    print("---")
+    print("---\n")
 
     return data
 
@@ -143,7 +143,7 @@ class DataWrapper(object):
                 bmr += 5
             else:
                 bmr -= 161
-            return round(bmr, 2)
+            return round(bmr)
         else:
             return None
 
@@ -151,7 +151,7 @@ class DataWrapper(object):
         activity = self.getActivity()
         bmr = self.getBmr()
         if activity and bmr:
-            return round(activity * bmr, 2)
+            return round(activity * bmr)
         else:
             return None
 
@@ -286,7 +286,7 @@ class DataWrapper(object):
                     if not promptIntro:
                         print("Some foods have unknown nutritional information. Please enter it below.")
                         print("You may leave the fields empty if you don't know or care.")
-                        print("You may also paste a link to a fddb.info site in the first prompt.")
+                        print("You may also paste a link to a fddb.info site in the first prompt.\n")
                         promptIntro = True
                     nutriInfo = promptNutriInfo(name)
                     self.data["nutriInfoCache"][name] = nutriInfo
@@ -341,9 +341,14 @@ class DataWrapper(object):
         totalEnergyExpenditure = self.getTotalEnergyExpenditure()
         kcalTotal = totalNutriInfo["energy"].kcal()
         if printDeficit and totalEnergyExpenditure:
+            deficit = round(totalEnergyExpenditure - kcalTotal)
             print()
-            print("With your total energy expenditure being {} kcal/day, you are currently at a calorie deficit of {} kcal".format(
-                totalEnergyExpenditure, round(kcalTotal - totalEnergyExpenditure)))
+            if deficit > 0:
+                print("With your total energy expenditure being {} kcal/day, you are currently at a calorie deficit of {} kcal".format(
+                    totalEnergyExpenditure, deficit))
+            else:
+                print("With your total energy expenditure being {} kcal/day, you are currently at a calorie surplus of {} kcal".format(
+                    totalEnergyExpenditure, -deficit))
 
     def eatInfo(self, startTime=None):
         if startTime:
@@ -393,39 +398,43 @@ def bmiStr(bmi):
     return s
 
 def main():
-    parser = argparse.ArgumentParser(prog="welo", description="")
+    parser = argparse.ArgumentParser(prog="welo", description="Weight and calorie tracker")
     subparsers = parser.add_subparsers(dest="command", help="")
     subparsers.required = True
 
-    configParser = subparsers.add_parser("config")
-    configParser.add_argument("datafile", nargs="?", type=str, help="")
-    configParser.add_argument("--height", "-e", type=q.Length, help="")
-    configParser.add_argument("--activity", "-a", type=q.Activity, help="")
-    configParser.add_argument("--birthday", "-b", type=q.Time, help="")
-    configParser.add_argument("--sex", "-s", type=q.Sex, help="")
-    configParser.add_argument("--goalweight", "-g", type=q.Mass, help="")
+    configParser = subparsers.add_parser("config", description="Set the current data file or information about yourself, to enable extra output regarding BMI, BMR, caloric deficit, etc.")
+    configParser.add_argument("datafile", nargs="?", type=str, help="This will set your current data file that welo will save its data to. If that file does not exist, it will be created.")
+    configParser.add_argument("--height", "-e", type=q.Length, help="Your height.")
+    configParser.add_argument("--activity", "-a", type=q.Activity, help="Your physical activity level (PAL).")
+    configParser.add_argument("--birthday", "-b", type=q.Time, help="Your birthday to determine age.")
+    configParser.add_argument("--sex", "-s", type=q.Sex, help="Your sex.")
+    configParser.add_argument("--goalweight", "-g", type=q.Mass, help="Your goal weight.")
 
-    eatParser = subparsers.add_parser("eat")
-    # food can be "<weight> leftovers"
-    eatParser.add_argument("food", nargs="*", help="A repeating list of weight and food name pairs.")
+    eatParser = subparsers.add_parser("eat", description="Log or get info about the food you ate.", epilog="""
+'portion':
+May either be a weight, but also a unitless number, representing a factor which is applied to the total weight of whatever it is referencing.
+Both the weight and the factor can be negative in which case the portion represents the total amount of whatever it is referencing *minus* that portion.
+For a meal that has a total weight of 1000g '0.2' would represent a portion of 200g, '-0.2' would represent a portion of 800g, so would '-200g'.
+""")
+    eatParser.add_argument("food", nargs="*", help="A repeating list of weight and food name pairs. May also be 'leftovers' which represents the last logged meal or 'leftovers(time)' with time being the time of the meal which leftovers should reference. For leftovers the weight is a 'portion' (see epilog of this help text)")
     eatParser.add_argument("--name", "-n", type=str, help="The name of the meal.")
     eatParser.add_argument("--time", "-t", type=q.Time, help="The time of the meal.")
-    eatParser.add_argument("--dry", "-d", action="store_true", help="If given, the meal will not be saved, but only the output will be shown and nutritional information about the food will be cached.")
-    eatParser.add_argument("--undo", "-u", action="store_true", help="If given, undo last meal or the one at --time.")
-    eatParser.add_argument("--resize", "-r", help="")
-    eatParser.add_argument("--portion", "-p", help="")
+    eatParser.add_argument("--dry", "-d", action="store_true", help="If given, the meal will not be saved, but only the output will be shown and nutritional information about the food items will be cached.")
+    eatParser.add_argument("--undo", "-u", action="store_true", help="If given, undo last meal or the one at --time. Positional arguments (i.e. food) will be ignored.")
+    eatParser.add_argument("--resize", "-r", help="Resize the last eaten meal or the one at --time. The parameter is a 'portion' (see epilog of this help text).")
+    eatParser.add_argument("--portion", "-p", help="Only eat a portion of the meal. The parameter is a 'portion' ")
 
-    weightParser = subparsers.add_parser("weight")
+    weightParser = subparsers.add_parser("weight", description="Log new weight or show last weight measurements.")
     weightParser.add_argument("weight", nargs="?", type=q.Mass, help="The new weight.")
-    weightParser.add_argument("--time", "-t", type=q.Time, help="The time of the weight measurement.")
+    weightParser.add_argument("--time", "-t", type=q.Time, help="The time of the weight measurement. Defaults to now.")
 
-    workoutParser = subparsers.add_parser("workout")
+    workoutParser = subparsers.add_parser("workout", description="Log workouts")
     workoutParser.add_argument("name", nargs="?", type=str, help="The name of the activity.")
     workoutParser.add_argument("duration", nargs="?", type=q.Duration, help="The duration of the activity.")
     workoutParser.add_argument("energy", nargs="?", type=q.Energy, help="The amount of energy used for the activity.")
     # TODO: Use energy / duration to estimate physical activity level
 
-    tagParser = subparsers.add_parser("tag")
+    tagParser = subparsers.add_parser("tag", description="Add tags to days to include in potential analyses about your weight development.")
     tagParser.add_argument("tag", nargs="*", type=str, help="A list of tags. You may add tag parameters in brackets: 'mytag(param, param)'.")
 
     args = parser.parse_args()
