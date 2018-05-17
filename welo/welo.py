@@ -327,24 +327,36 @@ class DataWrapper(object):
         if not dry:
             self.save()
 
+    def printMealTotals(self, meals, printDeficit=True):
+        totalNutriInfo = NutriInfoAccumulator()
+        for meal in meals:
+            totalNutriInfo.add(food["nutriInfo"] for food in meal["food"])
+
+        print("# Total")
+        totalNutriInfo = totalNutriInfo.getTotal()
+        for key in totalNutriInfo:
+            print("{}: {}".format(key, totalNutriInfo[key]))
+
+        totalEnergyExpenditure = self.getTotalEnergyExpenditure()
+        kcalTotal = totalNutriInfo["energy"].kcal()
+        if printDeficit and totalEnergyExpenditure:
+            print()
+            print("With your total energy expenditure being {} kcal/day, you are currently at a calorie deficit of {} kcal".format(
+                totalEnergyExpenditure, round(kcalTotal - totalEnergyExpenditure)))
+
     def eatInfo(self, startTime=None):
         if startTime:
             startTime = startTime.datetime
         else:
             startTime = datetime.combine(date.today(), time(0, 0))
 
-        totalNutriInfo = NutriInfoAccumulator()
         meals = list(self.getMeals(startTime))
 
         if len(meals) > 0:
+            print("Your meals since {}:\n".format(startTime.strftime("%d.%m.%Y %H:%M")))
             for meal in meals:
                 self.printMeal(meal)
-                totalNutriInfo.add(food["nutriInfo"] for food in meal["food"])
-
-            print("# In total since {}".format(startTime.strftime("%d.%m.%Y %H:%M")))
-            totalNutriInfo = totalNutriInfo.getTotal()
-            for key in totalNutriInfo:
-                print("{}: {}".format(key, totalNutriInfo[key]))
+            self.printMealTotals(meals)
         elif len(self.data["meals"]) > 0:
             print("You haven't eaten today yet.")
             timeDelta = datetime.now() - q.Time(self.data["meals"][-1]["time"]).datetime
