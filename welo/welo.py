@@ -412,10 +412,6 @@ def main():
     tagParser = subparsers.add_parser("tag")
     tagParser.add_argument("tag", nargs="*", type=str, help="A list of tags. You may add tag parameters in brackets: 'mytag(param, param)'.")
 
-    sleepParser = subparsers.add_parser("sleep")
-    sleepParser.add_argument("time", help="This may either be a duration or a start time, if end time is given too.")
-    sleepParser.add_argument("endtime", help="The end time.")
-
     args = parser.parse_args()
 
     configPath = os.path.join(appdirs.user_config_dir("welo", False), "config.json")
@@ -493,10 +489,6 @@ def main():
                 data.printWeight()
 
         elif args.command == "tag":
-            quit("Not implemented yet!")
-            pass
-
-        elif args.command == "sleep":
             quit("Not implemented yet!")
             pass
 
