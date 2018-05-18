@@ -368,6 +368,44 @@ class DataWrapper(object):
             timeDelta = datetime.now() - q.Time(self.data["meals"][-1]["time"]).datetime
             print("Your last meal was {} ago.".format(timedeltaStr(timeDelta)))
 
+    def nutriInfo(self, foodItem):
+        foodItem = foodItem.strip().lower()
+        if foodItem in self.data["nutriInfoCache"]:
+            print("Nutritional information for 100g of '{}':".format(foodItem))
+            for field, val in self.data["nutriInfoCache"][foodItem].items():
+                print("{}: {}".format(field, val))
+        else:
+            # Find best matches
+            print("No exact matches found.")
+            print("Closest matches:")
+            match = {item: foodItemNameMatchScore(foodItem, item) for item in self.data["nutriInfoCache"].keys()}
+            displayMatches = []
+            minMatch = max(2, len(foodItem) // 2)
+            for item in sorted(match.keys(), key=lambda x: match[x], reverse=True):
+                if match[item] >= minMatch:
+                    displayMatches.append(item)
+                    if len(displayMatches) >= 5:
+                        break
+            for item in displayMatches:
+                print(item)
+
+# return longest substrings first
+def substrings(s, minLength=1):
+    l = len(s)
+    for sublen in range(l, minLength - 1, -1):
+        for start in range(0, l - sublen + 1):
+            yield s[start:start + sublen]
+
+def foodItemNameMatchScore(ref, name):
+    ref = ref.strip().lower()
+    name = name.strip().lower()
+    score = 0
+    for sub in substrings(ref):
+        if sub in name:
+            score = len(sub)
+            break
+    return score
+
 def bmiStr(bmi):
     if bmi == None:
         return None
@@ -433,6 +471,9 @@ For a meal that has a total weight of 1000g '0.2' would represent a portion of 2
     workoutParser.add_argument("duration", nargs="?", type=q.Duration, help="The duration of the activity.")
     workoutParser.add_argument("energy", nargs="?", type=q.Energy, help="The amount of energy used for the activity.")
     # TODO: Use energy / duration to estimate physical activity level
+
+    nutriInfoParser = subparsers.add_parser("nutriinfo", description="Show nutritional info about a food item or find similar food items.")
+    nutriInfoParser.add_argument("fooditem", help="The food item to search for or get information about.")
 
     tagParser = subparsers.add_parser("tag", description="Add tags to days to include in potential analyses about your weight development.")
     tagParser.add_argument("tag", nargs="*", type=str, help="A list of tags. You may add tag parameters in brackets: 'mytag(param, param)'.")
@@ -516,6 +557,9 @@ For a meal that has a total weight of 1000g '0.2' would represent a portion of 2
             data.addWeight(args.weight, args.time)
         else:
             data.printWeight()
+
+    elif args.command == "nutriinfo":
+        data.nutriInfo(args.fooditem)
 
     elif args.command == "tag":
         quit("Not implemented yet!")
