@@ -213,6 +213,8 @@ class DataWrapper(object):
         name = meal.get("name", "meal")
         print("# {} @ {}".format(name, meal["time"]))
         print(" + ".join('{} "{}"'.format(item["amount"], item["name"]) for item in meal["food"]))
+        if "notes" in meal:
+            print("Notes:", meal["notes"])
         print("Total weight:", self.totalMealWeight(meal))
         totalNutriInfo = NutriInfoAccumulator(item["nutriInfo"] for item in meal["food"]).getTotal()
         for field in totalNutriInfo:
@@ -252,7 +254,7 @@ class DataWrapper(object):
             ret.append(_item)
         return ret
 
-    def eat(self, name, food, time, dry, portion):
+    def eat(self, name, food, time, notes, dry, portion):
         portionFactor = 1.0
         if portion:
             totalWeight = sum((q.Mass(w) for w in food[::2]), q.Mass(0))
@@ -263,6 +265,8 @@ class DataWrapper(object):
         if name:
             meal["name"] = name
         meal["food"] = []
+        if notes:
+            meal["notes"] = notes
 
         promptIntro = False
         for i in range(0, len(food), 2):
@@ -507,6 +511,7 @@ For a meal that has a total weight of 1000g '0.2' would represent a portion of 2
     eatParser.add_argument("--undo", "-u", action="store_true", help="If given, undo last meal or the one at --time. Positional arguments (i.e. food) will be ignored.")
     eatParser.add_argument("--resize", "-r", help="Resize the last eaten meal or the one at --time. The parameter is a 'portion' (see epilog of this help text).")
     eatParser.add_argument("--portion", "-p", help="Only eat a portion of the meal. The parameter is a 'portion' ")
+    eatParser.add_argument("--notes", "-o", help="Additional notes.")
 
     weightParser = subparsers.add_parser("weight", description="Log new weight or show last weight measurements.")
     weightParser.add_argument("weight", nargs="?", type=q.Mass, help="The new weight.")
@@ -517,7 +522,7 @@ For a meal that has a total weight of 1000g '0.2' would represent a portion of 2
     workoutParser.add_argument("duration", nargs="?", type=q.Duration, help="The duration of the activity.")
     workoutParser.add_argument("energy", nargs="?", type=q.Energy, help="The amount of energy used for the activity.")
     workoutParser.add_argument("--time", "-t", type=q.Time, help="The time of the workout.")
-    workoutParser.add_argument("--notes", "-n", help="Additional notes")
+    workoutParser.add_argument("--notes", "-o", help="Additional notes")
     # TODO: Use energy / duration to estimate physical activity level
 
     nutriInfoParser = subparsers.add_parser("nutriinfo", description="Show nutritional info about a food item or find similar food items.")
@@ -599,7 +604,7 @@ For a meal that has a total weight of 1000g '0.2' would represent a portion of 2
         if len(args.food) == 0:
             data.eatInfo(args.time)
         else:
-            data.eat(args.name, args.food, args.time, args.dry, args.portion)
+            data.eat(args.name, args.food, args.time, args.notes, args.dry, args.portion)
 
     elif args.command == "weight":
         if args.weight:
