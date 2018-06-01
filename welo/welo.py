@@ -389,6 +389,52 @@ class DataWrapper(object):
             for item in displayMatches:
                 print(item)
 
+    def printWorkout(self, workout):
+        print("# {} @ {}".format(workout["name"], workout["time"]))
+        print("Duration:", workout["duration"])
+        if "energy" in workout:
+            print("Energy:", workout["energy"], "Power:",
+                round(q.Energy(workout["energy"]).kcal() / q.Duration(workout["duration"]).h(), 1), "kcal/h")
+        if "notes" in workout:
+            print("Notes:", workout["notes"])
+        print()
+
+    def addWorkout(self, name, duration, energy=None, time=None, notes=None):
+        workout = odict()
+        workout["time"] = str(time or q.Time())
+        workout["name"] = name
+        workout["duration"] = str(duration)
+        if energy:
+            workout["energy"] = str(energy)
+        if notes:
+            workout["notes"] = notes
+
+        self.printWorkout(workout)
+
+        self.data["workout"].append(workout)
+        self.save()
+
+    def getWorkouts(self, startTime):
+        endTime = startTime + timedelta(hours=24)
+        filtered = (workout for workout in self.data["workout"] if q.Time(workout["time"]).inPeriod(startTime, endTime))
+        for workout in sorted(filtered, key=lambda workout: q.Time(workout["time"]).datetime):
+            yield workout
+
+    def workoutInfo(self, startTime=None):
+        if startTime:
+            startTime = startTime.datetime
+        else:
+            startTime = datetime.combine(date.today(), time(0, 0))
+
+        workouts = list(self.getWorkouts(startTime))
+
+        if len(workouts) > 0:
+            print("Your workouts since {}:\n".format(startTime.strftime("%d.%m.%Y %H:%M")))
+            for workout in workouts:
+                self.printWorkout(workout)
+        else:
+            print("You did not work out today.")
+
 # return longest substrings first
 def substrings(s, minLength=1):
     l = len(s)
@@ -470,6 +516,8 @@ For a meal that has a total weight of 1000g '0.2' would represent a portion of 2
     workoutParser.add_argument("name", nargs="?", type=str, help="The name of the activity.")
     workoutParser.add_argument("duration", nargs="?", type=q.Duration, help="The duration of the activity.")
     workoutParser.add_argument("energy", nargs="?", type=q.Energy, help="The amount of energy used for the activity.")
+    workoutParser.add_argument("--time", "-t", type=q.Time, help="The time of the workout.")
+    workoutParser.add_argument("--notes", "-n", help="Additional notes")
     # TODO: Use energy / duration to estimate physical activity level
 
     nutriInfoParser = subparsers.add_parser("nutriinfo", description="Show nutritional info about a food item or find similar food items.")
@@ -477,6 +525,7 @@ For a meal that has a total weight of 1000g '0.2' would represent a portion of 2
 
     tagParser = subparsers.add_parser("tag", description="Add tags to days to include in potential analyses about your weight development.")
     tagParser.add_argument("tag", nargs="*", type=str, help="A list of tags. You may add tag parameters in brackets: 'mytag(param, param)'.")
+    tagParser.add_argument("--time", "-t", type=q.Time, help="The time of the workout.")
 
     args = parser.parse_args()
 
@@ -566,12 +615,12 @@ For a meal that has a total weight of 1000g '0.2' would represent a portion of 2
         pass
 
     elif args.command == "workout":
-        quit("Not implemented yet!")
         if args.name:
             if not args.duration:
                 quit("Please specify a duration")
+            data.addWorkout(args.name, args.duration, args.energy, args.time, args.notes)
         else:
-            pass
+            data.workoutInfo(args.time)
 
 if __name__ == "__main__":
     main()
