@@ -99,6 +99,9 @@ def timedeltaStr(delta):
     ret += "{}m".format(m)
     return ret
 
+def datetime2str(dt):
+    return dt.strftime("%d.%m.%Y %H:%M")
+
 class DataWrapper(object):
     def __init__(self, data, path):
         self.data = data
@@ -200,18 +203,21 @@ class DataWrapper(object):
         for weight in self.data["weight"]:
             print("{}: {}".format(q.Time(weight["time"]), q.Mass(weight["weight"])))
 
-    def getMeals(self, startTime):
+    def getLogs(self, startTime, items):
         endTime = startTime + timedelta(hours=24)
-        filtered = (meal for meal in self.data["meals"] if q.Time(meal["time"]).inPeriod(startTime, endTime))
-        for meal in sorted(filtered, key=lambda meal: q.Time(meal["time"]).datetime):
-            yield meal
+        filtered = (item for item in items if q.Time(item["time"]).inPeriod(startTime, endTime))
+        for item in sorted(filtered, key=lambda item: q.Time(item["time"]).datetime):
+            yield item
+
+    def getMeals(self, startTime):
+        return self.getLogs(startTime, self.data["meals"])
 
     def totalMealWeight(self, meal):
         return sum((q.fromStr(item["amount"]) for item in meal["food"]), q.Mass(0))
 
     def printMeal(self, meal):
         name = meal.get("name", "meal")
-        print("# {} @ {}".format(name, meal["time"]))
+        print("# Eat '{}' @ {}".format(name, meal["time"]))
         print(" + ".join('{} "{}"'.format(item["amount"], item["name"]) for item in meal["food"]))
         if "notes" in meal:
             print("Notes:", meal["notes"])
@@ -363,7 +369,7 @@ class DataWrapper(object):
         meals = list(self.getMeals(startTime))
 
         if len(meals) > 0:
-            print("Your meals since {}:\n".format(startTime.strftime("%d.%m.%Y %H:%M")))
+            print("Your meals since {}:\n".format(datetime2str(startTime)))
             for meal in meals:
                 self.printMeal(meal)
             self.printMealTotals(meals)
@@ -394,7 +400,7 @@ class DataWrapper(object):
                 print(item)
 
     def printWorkout(self, workout):
-        print("# {} @ {}".format(workout["name"], workout["time"]))
+        print("# Workout '{}' @ {}".format(workout["name"], workout["time"]))
         print("Duration:", workout["duration"])
         if "energy" in workout:
             print("Energy:", workout["energy"], "Power:",
@@ -419,10 +425,7 @@ class DataWrapper(object):
         self.save()
 
     def getWorkouts(self, startTime):
-        endTime = startTime + timedelta(hours=24)
-        filtered = (workout for workout in self.data["workout"] if q.Time(workout["time"]).inPeriod(startTime, endTime))
-        for workout in sorted(filtered, key=lambda workout: q.Time(workout["time"]).datetime):
-            yield workout
+        return self.getLogs(startTime, self.data["workout"])
 
     def workoutInfo(self, startTime=None):
         if startTime:
@@ -433,11 +436,38 @@ class DataWrapper(object):
         workouts = list(self.getWorkouts(startTime))
 
         if len(workouts) > 0:
-            print("Your workouts since {}:\n".format(startTime.strftime("%d.%m.%Y %H:%M")))
+            print("Your workouts since {}:\n".format(datetime2str(startTime)))
             for workout in workouts:
                 self.printWorkout(workout)
         else:
             print("You did not work out today.")
+
+    def printSummary(self, startTime, endTime=None):
+        startTime = startTime.datetime
+        if endTime == None:
+            endTime = startTime + timedelta(hours=24)
+
+        print("Summary from {} to {}".format(datetime2str(startTime), datetime2str(endTime)))
+
+        meals = list(self.getMeals(startTime))
+        workouts = list(self.getWorkouts(startTime))
+        weights = list(self.getLogs(startTime, self.data["weight"]))
+
+        logs = []
+        logs.extend(map(lambda x: {'type': 'meal', 'data': x}, meals))
+        logs.extend(map(lambda x: {'type': 'workout', 'data': x}, workouts))
+        logs.extend(map(lambda x: {'type': 'weight', 'data': x}, weights))
+
+        for log in sorted(logs, key=lambda x: q.Time(x["data"]["time"]).datetime):
+            if log["type"] == "meal":
+                self.printMeal(log["data"])
+            elif log["type"] == "workout":
+                self.printWorkout(log["data"])
+            elif log["type"] == "weight":
+                print("# Weight @ {}: {}\n".format(log["data"]["time"], log["data"]["weight"]))
+
+        if len(meals) > 0:
+            self.printMealTotals(meals)
 
 # return longest substrings first
 def substrings(s, minLength=1):
@@ -529,8 +559,12 @@ For a meal that has a total weight of 1000g '0.2' would represent a portion of 2
     nutriInfoParser.add_argument("fooditem", help="The food item to search for or get information about.")
 
     tagParser = subparsers.add_parser("tag", description="Add tags to days to include in potential analyses about your weight development.")
-    tagParser.add_argument("tag", nargs="*", type=str, help="A list of tags. You may add tag parameters in brackets: 'mytag(param, param)'.")
+    tagParser.add_argument("tags", nargs="*", type=str, help="A list of tags. You may add tag parameters in brackets: 'mytag(param, param)'.")
     tagParser.add_argument("--time", "-t", type=q.Time, help="The time of the workout.")
+
+    summaryParser = subparsers.add_parser("summary", description="Prints a summary of all logged data in a specified timeframe.")
+    summaryParser.add_argument("start", type=q.Time, help="The beginning of the time frame.")
+    summaryParser.add_argument("end", nargs="?", type=q.Time, help="The end of the time frame. Default is 24h after 'from'.")
 
     args = parser.parse_args()
 
@@ -626,6 +660,8 @@ For a meal that has a total weight of 1000g '0.2' would represent a portion of 2
             data.addWorkout(args.name, args.duration, args.energy, args.time, args.notes)
         else:
             data.workoutInfo(args.time)
+    elif args.command == "summary":
+        data.printSummary(args.start, args.end)
 
 if __name__ == "__main__":
     main()

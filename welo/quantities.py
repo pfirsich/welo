@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, date
+from datetime import datetime, date, time
 
 def splitUnit(s):
     matches = re.findall(r"(\-?[0-9\.]+)\s*([A-z\"'\(\)]+)", s)
@@ -70,6 +70,10 @@ class Time(object):
             self.datetime = datetime.now()
         elif isinstance(s, Time):
             self.datetime = s.datetime
+        elif s == "today" or s == "yesterday":
+            self.datetime = datetime.combine(date.today(), time(0, 0))
+            if s == "yesterday":
+                self.datetime -= timedelta(hours=24)
         else:
             formats = ["%d.%m.%Y %H:%M", "%d.%m.%Y", "%Y.%m.%d %H:%M", "%Y.%m.%d"]
             for fmt in formats:
